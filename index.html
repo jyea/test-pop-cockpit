@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>中国人口版图 · 数据驾驶舱</title>
+<style>
+:root { color-scheme: dark; --bg:#08131d; --panel:#101f2b; --line:#29404d; --ink:#ecf5f8; --muted:#a0b4bf; --cyan:#71c7f5 }
+* { box-sizing:border-box }
+body { margin:0; overflow:hidden; background:#050d14; color:var(--ink); font:20px "Microsoft YaHei",sans-serif }
+#stage { width:1920px; height:1080px; position:absolute; left:50%; top:50%; transform-origin:center; background:var(--bg); display:grid; grid-template:106px 1fr 46px / 112px 1fr }
+header { grid-column:1/-1; display:flex; align-items:center; gap:22px; padding:0 34px; background:#101f2a; border-bottom:1px solid var(--line) }
+.mark { display:flex; gap:5px; align-items:flex-end; height:42px; margin-right:4px }
+.mark i { width:8px; height:19px; background:var(--cyan); transform:skewY(-18deg) }
+.mark i:nth-child(2) { height:36px }.mark i:nth-child(3) { height:28px }
+h1 { font-size:37px; letter-spacing:3px; margin:0 auto 0 0 }
+label { display:flex; align-items:center; gap:12px; color:var(--muted); font-size:17px }
+select,button { font:inherit; cursor:pointer }
+select,.reset { color:var(--ink); background:#132732; border:1px solid #395664; border-radius:6px; padding:10px 15px; font-size:18px }
+header select { min-width:96px; font-size:14px; padding:8px 12px }
+header option { font-size:14px }
+select:disabled { opacity:.65; cursor:default }
+button:focus-visible,select:focus-visible { outline:3px solid var(--cyan); outline-offset:3px }
+.reset { margin-left:4px; color:var(--cyan) }
+nav { grid-row:2/4; display:flex; flex-direction:column; gap:16px; padding:26px 12px; border-right:1px solid var(--line); background:#0c1923 }
+nav button { background:transparent; border:1px solid transparent; border-radius:8px; padding:16px 4px; color:var(--muted); display:grid; justify-items:center; gap:9px; font-size:18px }
+nav button:hover,.reset:hover { background:#19323c }
+nav button[aria-current="page"] { background:#15363d; color:var(--cyan); border-color:#28545c }
+nav b { font:28px/1 "Segoe UI Symbol",sans-serif }
+main { min-height:0; padding:24px 28px 14px }
+.page { height:100%; display:grid; gap:16px }
+[hidden] { display:none!important }
+#overview { grid-template-columns:repeat(12,minmax(0,1fr)); grid-template-rows:150px repeat(3,minmax(0,1fr)) }
+.card,.box { min-width:0; min-height:0; border:1px solid var(--line); border-radius:9px; background:var(--panel); overflow:hidden }
+.card { grid-column:span 3; padding:17px 24px; border-top:3px solid var(--accent); background:linear-gradient(110deg,#152a36,var(--panel)) }
+.card { --accent:#71c7f5 }.card:last-of-type { --accent:#ff847d }
+.card h2 { margin:0; font-weight:500; font-size:19px; color:#c4d3da }
+.value { display:flex; align-items:baseline; gap:10px; margin:6px 0 2px; color:var(--accent) }
+.value strong { font:600 44px/1.18 "Segoe UI",sans-serif; font-variant-numeric:tabular-nums }
+small,.note { font-size:16px; color:var(--muted) }
+.box { display:flex; flex-direction:column }
+.box h2 { display:flex; align-items:center; gap:11px; margin:0; padding:15px 20px; border-bottom:1px solid var(--line); font-size:21px; font-weight:600 }
+.box h2::before { content:""; height:15px; width:3px; background:var(--cyan) }
+.box h2 small { margin-left:auto; font-weight:400 }
+.chart { flex:1; min-height:0 }
+.map { grid-column:4/span 6; grid-row:2/span 3; background:radial-gradient(ellipse at center,#142c37,#0e202c); border-color:#355461 }
+.left { grid-column:1/span 3 }.right { grid-column:10/span 3; grid-row:2/span 3 }
+#flow { grid-template-columns:3fr 6fr 3fr } #cluster { grid-template-columns:7fr 5fr }
+footer { display:flex; align-items:center; padding:0 30px; color:var(--muted); font-size:15px }
+.box h2 { flex-wrap:wrap; row-gap:3px; font-size:19px }
+.box h2 small { font-size:14px; letter-spacing:0 }
+.box .subhead { display:block; width:100%; padding-left:14px; color:var(--muted); font-size:15px; font-weight:400 }
+#clusterMembers { padding:24px; display:grid; align-content:center; gap:24px }
+.group { padding:18px 20px; border-left:4px solid var(--cyan); background:#142735 }
+.group p { line-height:1.8; margin:8px 0 0; color:var(--muted); font-size:18px }
+.sourceRow { display:grid; grid-template-columns:34px 1fr auto; gap:8px; margin:0 18px; padding:19px 0; border-bottom:1px solid var(--line); font-size:18px }.sourceRow span:first-child { color:var(--muted) }.sourceRow span:last-child { color:var(--cyan); font-variant-numeric:tabular-nums }</style>
+</head>
+<body>
+<div id="stage">
+<header>
+  <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span><h1>中国人口版图驾驶舱</h1>
+  <label>年份<select id="year"></select></label>
+  <label>指标<select id="metric"><option value="pop">人口</option><option value="net">净流入</option><option value="density">密度</option></select></label>
+  <button type="button" class="reset" id="reset">↺　重置</button>
+</header>
+<nav aria-label="页面导航">
+  <button data-page="overview" aria-current="page"><b aria-hidden="true">▦</b>总览</button>
+  <button data-page="flow"><b aria-hidden="true">⇄</b>流动</button>
+  <button data-page="cluster"><b aria-hidden="true">◇</b>分型</button>
+</nav>
+<main>
+<section class="page" id="overview" aria-label="总览">
+  <article class="card"><h2>常住人口合计</h2><div class="value"><strong id="population"></strong><small>万人</small></div><div class="note" id="coverage"></div></article>
+  <article class="card"><h2>覆盖省级行政区</h2><div class="value"><strong id="provinces"></strong><small>个</small></div><div class="note" id="period"></div></article>
+  <article class="card"><h2>跨省流动人口</h2><div class="value"><strong id="migrants"></strong><small>万人</small></div><div class="note" id="routes"></div></article>
+  <article class="card"><h2>净流入最多的省份</h2><div class="value"><strong id="leaderNet"></strong><small>万人</small></div><div class="note" id="leader"></div></article>
+  <article class="box map"><h2>中国人口版图<small id="mapMetric"></small></h2><div class="chart" id="map"></div></article>
+  <article class="box left"><h2>常住人口趋势</h2><div class="chart" id="line"></div></article>
+  <article class="box right"><h2 id="rankTitle">省份排行</h2><div class="chart" id="rank"></div></article>
+  <article class="box left"><h2>人口年度增量</h2><div class="chart" id="growth"></div></article>
+  <article class="box left"><h2>各省人口占比</h2><div class="chart" id="share"></div></article>
+</section>
+<section class="page" id="flow" aria-label="流动" hidden>
+  <article class="box"><h2>各省迁入与迁出</h2><div class="chart" id="flowTotals"></div></article>
+  <article class="box"><h2>省际流动地图</h2><div class="chart" id="flowMap"></div></article>
+  <article class="box"><h2>主要省际流向</h2><div class="chart" id="flowRank"></div></article>
+</section>
+<section class="page" id="cluster" aria-label="分型" hidden>
+  <article class="box"><h2>省份分型地图</h2><div class="chart" id="clusterMap"></div></article>
+  <article class="box"><h2>各类成员省份</h2><div class="chart" id="clusterMembers"></div></article>
+</section>
+</main>
+<footer id="source"></footer>
+</div>
+<script src="./assets/echarts.min.js"></script>
+<script src="./assets/china.js"></script>
+<script src="./data.js"></script>
+<script src="./assets/cockpit.js"></script>
+</body>
+</html>
+
